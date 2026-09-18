@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>光栅衍射时间距测量程序</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .panel {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .left-panel { flex: 1; min-width: 250px; }
+        .center-panel { flex: 2.5; min-width: 400px; display: flex; flex-direction: column; gap: 10px; }
+        .right-panel { flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 15px; }
+
+        h3 {
+            margin-top: 0;
+            color: #1e3a8a;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #475569;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            background-color: #2563eb;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        .btn-reset {
+            background-color: #3b82f6;
+        }
+        .canvas-container {
+            position: relative;
+            background-color: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+        }
+        canvas {
+            max-width: 100%;
+            max-height: 500px;
+            cursor: crosshair;
+        }
+        .prompt {
+            text-align: center;
+            color: #1e3a8a;
+            font-weight: bold;
+            margin: 0;
+            padding: 10px;
+            background: #eff6ff;
+            border-radius: 4px;
+        }
+        .result-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 15px;
+            font-size: 16px;
+            line-height: 2;
+        }
+        .result-value {
+            color: #16a34a;
+            font-weight: bold;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 左侧：参数输入 -->
+    <div class="panel left-panel">
+        <h3>图片标定参数</h3>
+        
+        <label>上传衍射图片</label>
+        <input type="file" id="imageLoader" accept="image/*">
+        
+        <label>图片实际宽度 (mm)</label>
+        <input type="number" id="realWidth" value="80" step="0.1">
+        
+        <label>图片实际高度 (mm)</label>
+        <input type="number" id="realHeight" value="60" step="0.1">
+        
+        <button id="uploadBtn" onclick="document.getElementById('imageLoader').click()">输入参数并上传照片</button>
+    </div>
+
+    <!-- 中间：画布操作区 -->
+    <div class="panel center-panel">
+        <div class="canvas-container">
+            <canvas id="imageCanvas"></canvas>
+        </div>
+        <p class="prompt">依次点击6个光斑选点</p>
+    </div>
+
+    <!-- 右侧：结果展示区 -->
+    <div class="panel right-panel">
+        <button id="resetBtn" class="btn-reset">重置所有选点</button>
+        <div class="result-box">
+            <p>第1组光斑间距: <span class="result-value" id="res1">0.000</span> mm</p>
+            <p>第2组光斑间距: <span class="result-value" id="res2">0.000</span> mm</p>
+            <p>第3组光斑间距: <span class="result-value" id="res3">0.000</span> mm</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('imageCanvas');
+    const ctx = canvas.getContext('2d');
+    let img = new Image();
+    let points = []; // 存储选点坐标 {x, y}
+
+    // 上传图片
+    document.getElementById('imageLoader').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                img.onload = function() {
+                    // 限制最大显示尺寸，避免画布太大
+                    const maxWidth = 800;
+                    const maxHeight = 500;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth) {
+                        height = height * (maxWidth / width);
+                        width = maxWidth;
+                    }
+                    if (height > maxHeight) {
+                        width = width * (maxHeight / height);
+                        height = maxHeight;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    resetAll();
+                    draw();
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // 绘制图像和已选的点
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        if (img.src) {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        } else {
+            // 占位背景
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('请上传衍射图片', canvas.width / 2, canvas.height / 2);
+        }
+
+        // 绘制选中点
+        points.forEach((p, index) => {
+            // 绘制圆圈
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 绘制序号
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(index + 1, p.x, p.y + 5);
+        });
+    }
+
+    // 画布点击事件
+    canvas.addEventListener('click', function(e) {
+        if (!img.src) return; // 未上传图片不可点击
+        if (points.length >= 6) return; // 最多选6个点
+
+        const rect = canvas.getBoundingClientRect();
+        // 计算缩放比例，确保坐标相对准确
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+
+        points.push({ x, y });
+        draw();
+
+        // 满6个点自动计算
+        if (points.length === 6) {
+            calculate();
+        }
+    });
+
+    // 计算间距
+    function calculate() {
+        const w_mm = parseFloat(document.getElementById('realWidth').value) || 80;
+        
+        // 像素转毫米的比例 (目前只使用了宽度方向的比例)
+        const pixelsPerMm = canvas.width / w_mm;
+
+        // 提取6个点的横坐标并排序（防止用户逆序点击）
+        const xs = points.map(p => p.x).sort((a, b) => a - b);
+
+        // 根据物理规律: 左右对称，中间隔了0级光斑
+        // xs[0] 到 xs[5] 分别代表 -3, -2, -1, +1, +2, +3 级光斑
+        // 第1组间距 (1级和-1级): xs[3] - xs[2]
+        // 第2组间距 (2级和-2级): xs[4] - xs[1]
+        // 第3组间距 (3级和-3级): xs[5] - xs[0]
+
+        const deltaX1_mm = (xs[3] - xs[2]) / pixelsPerMm;
+        const deltaX2_mm = (xs[4] - xs[1]) / pixelsPerMm;
+        const deltaX3_mm = (xs[5] - xs[0]) / pixelsPerMm;
+
+        document.getElementById('res1').textContent = deltaX1_mm.toFixed(3);
+        document.getElementById('res2').textContent = deltaX2_mm.toFixed(3);
+        document.getElementById('res3').textContent = deltaX3_mm.toFixed(3);
+    }
+
+    // 重置
+    function resetAll() {
+        points = [];
+        document.getElementById('res1').textContent = '0.000';
+        document.getElementById('res2').textContent = '0.000';
+        document.getElementById('res3').textContent = '0.000';
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+        resetAll();
+        draw();
+    });
+
+    // 初始化画布背景
+    canvas.width = 600;
+    canvas.height = 400;
+    draw();
+
+</script>
+</body>
+</html>
