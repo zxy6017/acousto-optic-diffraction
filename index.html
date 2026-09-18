@@ -68,12 +68,9 @@
             transition: background 0.3s;
             font-weight: bold;
         }
-        button:hover {
-            background-color: #1d4ed8;
-        }
-        .btn-reset {
-            background-color: #3b82f6;
-        }
+        button:hover { background-color: #1d4ed8; }
+        .btn-reset { background-color: #3b82f6; }
+        
         .canvas-container {
             position: relative;
             background-color: #e2e8f0;
@@ -111,6 +108,47 @@
             font-weight: bold;
             font-size: 18px;
         }
+        
+        /* 底部说明文档样式 */
+        .instructions {
+            width: 100%;
+            margin-top: 30px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 25px;
+            box-sizing: border-box;
+        }
+        .instructions h2 {
+            color: #1e3a8a;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .instructions h4 {
+            color: #334155;
+            margin-bottom: 5px;
+        }
+        .instructions p, .instructions li {
+            line-height: 1.8;
+            color: #475569;
+        }
+        .instructions table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+        .instructions th, .instructions td {
+            border: 1px solid #cbd5e1;
+            padding: 12px;
+            text-align: center;
+        }
+        .instructions th {
+            background-color: #f1f5f9;
+            color: #1e293b;
+        }
+        .highlight { color: #dc2626; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -151,6 +189,50 @@
     </div>
 </div>
 
+<!-- 下方：说明文档区 -->
+<div class="instructions">
+    <h2>📖 程序使用说明与测量原理</h2>
+    
+    <h4>1. 测量原理</h4>
+    <p><strong>横向测量机制：</strong>本程序采用<strong>横向（水平X轴方向）排序测量间距</strong>。程序的算法会自动抓取并比较所有点击光斑的X轴坐标，忽略Y轴坐标（高度），然后从左到右自动排序。因此，点击时只需大致在光斑水平中心线上即可，上下轻微的偏移不会影响测量结果。</p>
+    <p><strong>计算公式：</strong>程序通过计算点击像素之间的横向距离，结合图片的实际宽度与图片的像素宽度，自动换算出真实的物理距离（单位：mm）。</p>
+
+    <h4>2. 光斑与组的对应关系</h4>
+    <p>根据光栅衍射实验原理，0级明纹位于中心，两侧依次对称分布着±1级、±2级、±3级光斑。由于程序会自动进行横向排序，无论您点击顺序如何，计算逻辑都是固定的：</p>
+    <table>
+        <tr>
+            <th>组别</th>
+            <th>光斑级别</th>
+            <th>对应点击的顺序（按从左到右）</th>
+        </tr>
+        <tr>
+            <td>第1组 (Δx₁)</td>
+            <td>+1级 与 -1级（紧挨中心）</td>
+            <td><strong>点 3</strong> 与 <strong>点 4</strong> 之间的距离</td>
+        </tr>
+        <tr>
+            <td>第2组 (Δx₂)</td>
+            <td>+2级 与 -2级（次外侧）</td>
+            <td><strong>点 2</strong> 与 <strong>点 5</strong> 之间的距离</td>
+        </tr>
+        <tr>
+            <td>第3组 (Δx₃)</td>
+            <td>+3级 与 -3级（最外侧）</td>
+            <td><strong>点 1</strong> 与 <strong>点 6</strong> 之间的距离</td>
+        </tr>
+    </table>
+    <p><em>*若您点击乱了顺序，比如先点了最右侧，再点了中间，程序内部会自动重新排序后换算，得出的数据与按要求从左到右点击是<strong>完全一致</strong>的。</em></p>
+
+    <h4>3. 操作注意事项（初次使用必看）</h4>
+    <ul>
+        <li><strong>选点数量：</strong>必须且只能点击6个点，代表正负1级到正负3级的6个衍射光斑。当第6个点点击完成后，右侧的数据才会自动进行计算并显示。</li>
+        <li><strong>标定参数：</strong>输入“图片实际宽度”时务必准确，这个数值直接关系到像素与毫米的换算比例（默认80mm，如果拍摄的照片有透视或缩放，请测量图片中真实光屏的宽度填入）。</li>
+        <li><strong>连线提示：</strong>点满6个点后，程序会将最内侧第1组、次外侧第2组、最外侧第3组的对应光斑用<strong>细红线</strong>相连，方便您直观校对计算的点是否发生了偏移。</li>
+        <li><strong>点错了怎么办：</strong>如果选点偏移严重，点击右侧的“重置所有选点”按钮，即可清空所有连线与数据重新点选。</li>
+        <li><strong>选点建议：</strong>点击光斑时，尽量放大图片，精确点击每个衍射光斑最中心的亮斑位置，以减小实验误差。</li>
+    </ul>
+</div>
+
 <script>
     const canvas = document.getElementById('imageCanvas');
     const ctx = canvas.getContext('2d');
@@ -164,7 +246,7 @@
             const reader = new FileReader();
             reader.onload = function(event) {
                 img.onload = function() {
-                    // 限制最大显示尺寸，避免画布太大
+                    // 限制最大显示尺寸
                     const maxWidth = 800;
                     const maxHeight = 500;
                     let width = img.width;
@@ -197,7 +279,6 @@
         if (img.src) {
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         } else {
-            // 占位背景
             ctx.fillStyle = '#e2e8f0';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = '#94a3b8';
@@ -206,32 +287,58 @@
             ctx.fillText('请上传衍射图片', canvas.width / 2, canvas.height / 2);
         }
 
-        // 绘制选中点
+        // 如果满6个点，开始绘制连线（根据横向排序位置连线）
+        if (points.length === 6) {
+            const sortedPoints = [...points].sort((a, b) => a.x - b.x);
+            
+            // 绘制细红线相连
+            ctx.strokeStyle = '#FF0000';
+            ctx.lineWidth = 1; 
+            
+            // 第3组：最外侧两个点 (最左和最右) -> 对应 xs[0] 和 xs[5]
+            ctx.beginPath();
+            ctx.moveTo(sortedPoints[0].x, sortedPoints[0].y);
+            ctx.lineTo(sortedPoints[5].x, sortedPoints[5].y);
+            ctx.stroke();
+
+            // 第2组：次外侧两个点 (次左和次右) -> 对应 xs[1] 和 xs[4]
+            ctx.beginPath();
+            ctx.moveTo(sortedPoints[1].x, sortedPoints[1].y);
+            ctx.lineTo(sortedPoints[4].x, sortedPoints[4].y);
+            ctx.stroke();
+
+            // 第1组：中间两个点 (最中间的两点) -> 对应 xs[2] 和 xs[3]
+            ctx.beginPath();
+            ctx.moveTo(sortedPoints[2].x, sortedPoints[2].y);
+            ctx.lineTo(sortedPoints[3].x, sortedPoints[3].y);
+            ctx.stroke();
+        }
+
+        // 绘制选中点（绿色小圆点）
         points.forEach((p, index) => {
             // 绘制圆圈
             ctx.beginPath();
-            ctx.arc(p.x, p.y, 6, 0, 2 * Math.PI);
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+            ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI); // 半径修改为4（较小）
+            ctx.fillStyle = '#00FF00'; // 绿色填充
             ctx.fill();
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ffffff'; // 白色描边
+            ctx.lineWidth = 1;
             ctx.stroke();
 
-            // 绘制序号
+            // 绘制序号（保持可见性，但很小）
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 14px Arial';
+            ctx.font = 'bold 10px Arial'; // 字号缩小
             ctx.textAlign = 'center';
-            ctx.fillText(index + 1, p.x, p.y + 5);
+            ctx.fillText(index + 1, p.x, p.y + 3);
         });
     }
 
     // 画布点击事件
     canvas.addEventListener('click', function(e) {
-        if (!img.src) return; // 未上传图片不可点击
-        if (points.length >= 6) return; // 最多选6个点
+        if (!img.src) return; 
+        if (points.length >= 6) return; 
 
         const rect = canvas.getBoundingClientRect();
-        // 计算缩放比例，确保坐标相对准确
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
 
@@ -241,7 +348,6 @@
         points.push({ x, y });
         draw();
 
-        // 满6个点自动计算
         if (points.length === 6) {
             calculate();
         }
@@ -250,18 +356,16 @@
     // 计算间距
     function calculate() {
         const w_mm = parseFloat(document.getElementById('realWidth').value) || 80;
-        
-        // 像素转毫米的比例 (目前只使用了宽度方向的比例)
         const pixelsPerMm = canvas.width / w_mm;
-
+        
         // 提取6个点的横坐标并排序（防止用户逆序点击）
         const xs = points.map(p => p.x).sort((a, b) => a - b);
 
-        // 根据物理规律: 左右对称，中间隔了0级光斑
-        // xs[0] 到 xs[5] 分别代表 -3, -2, -1, +1, +2, +3 级光斑
-        // 第1组间距 (1级和-1级): xs[3] - xs[2]
-        // 第2组间距 (2级和-2级): xs[4] - xs[1]
-        // 第3组间距 (3级和-3级): xs[5] - xs[0]
+        // 按横向排序后的数组进行计算：
+        // 点 0,1,2,3,4,5 分别代表最左到最右的6个点
+        // 第1组间距: xs[3] - xs[2] (中间两点，1级)
+        // 第2组间距: xs[4] - xs[1] (次外侧两点，2级)
+        // 第3组间距: xs[5] - xs[0] (最外侧两点，3级)
 
         const deltaX1_mm = (xs[3] - xs[2]) / pixelsPerMm;
         const deltaX2_mm = (xs[4] - xs[1]) / pixelsPerMm;
