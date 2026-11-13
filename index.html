@@ -5,12 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>光栅衍射时间距测量程序</title>
     <style>
+        /* 全局字体设置：英文优先 Times New Roman，中文匹配宋体 */
+        body, button, input, table, th, td, p, li, label {
+            font-family: 'Times New Roman', SimSun, '宋体', serif;
+        }
+        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f7f9;
             margin: 0;
             padding: 20px;
             color: #333;
+            font-size: 16px;
         }
         .container {
             max-width: 1200px;
@@ -55,6 +60,7 @@
             border: 1px solid #cbd5e1;
             border-radius: 4px;
             box-sizing: border-box;
+            font-size: 16px;
         }
         button {
             width: 100%;
@@ -303,7 +309,7 @@
             ctx.fillStyle = '#e2e8f0';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = '#94a3b8';
-            ctx.font = '20px Arial';
+            ctx.font = '20px "Times New Roman", SimSun, serif';
             ctx.textAlign = 'center';
             ctx.fillText('请上传衍射图片', canvas.width / 2, canvas.height / 2);
         }
@@ -335,22 +341,12 @@
             ctx.stroke();
         }
 
-        // 绘制选中点（绿色小圆点）
-        points.forEach((p, index) => {
-            // 绘制圆圈
+        // 绘制选中点（深蓝色圆点，尺寸较大，无标号无描边）
+        points.forEach((p) => {
             ctx.beginPath();
-            ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI); // 半径修改为4（较小）
-            ctx.fillStyle = '#00FF00'; // 绿色填充
+            ctx.arc(p.x, p.y, 5, 0, 2 * Math.PI); // 半径调整为5
+            ctx.fillStyle = '#00008B'; // 深蓝色
             ctx.fill();
-            ctx.strokeStyle = '#ffffff'; // 白色描边
-            ctx.lineWidth = 1;
-            ctx.stroke();
-
-            // 绘制序号（保持可见性，但很小）
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 10px Arial'; // 字号缩小
-            ctx.textAlign = 'center';
-            ctx.fillText(index + 1, p.x, p.y + 3);
         });
     }
 
@@ -384,10 +380,6 @@
 
         // 按横向排序后的数组进行计算：
         // 点 0,1,2,3,4,5 分别代表最左到最右的6个点
-        // 第1组间距: xs[3] - xs[2] (中间两点，1级)
-        // 第2组间距: xs[4] - xs[1] (次外侧两点，2级)
-        // 第3组间距: xs[5] - xs[0] (最外侧两点，3级)
-
         const deltaX1_mm = (xs[3] - xs[2]) / pixelsPerMm;
         const deltaX2_mm = (xs[4] - xs[1]) / pixelsPerMm;
         const deltaX3_mm = (xs[5] - xs[0]) / pixelsPerMm;
